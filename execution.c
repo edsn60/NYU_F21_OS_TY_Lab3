@@ -66,7 +66,6 @@ void *thread_runner(){
     int task_id;
     int times = 1;
     while(1){
-        sleep(1);
         pthread_mutex_lock(threadPool->task_queue_lock);
 
         if (threadPool->remain_task == 0){
@@ -78,7 +77,7 @@ void *thread_runner(){
         else{
             task_id = threadPool->task_head->next->task_id;
             (threadPool->remain_task)--;
-            strncpy(task, threadPool->task_head->next->task_string, 4096);
+            strncpy(task, threadPool->task_head->next->task_string, sizeof(char) * 4096);
             task[4096] = '\0';
             task_queue *tmp = threadPool->task_head->next;
             threadPool->task_head->next = tmp->next;
@@ -89,6 +88,5 @@ void *thread_runner(){
 
         threadPool->result[task_id] = encoding(task);
         sem_post(threadPool->result_lock[task_id]);
-        fprintf(stderr, "thread up %d\n", task_id);
     }
 }

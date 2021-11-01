@@ -8,7 +8,8 @@
 
 
 char *encoding(char *content){
-    char *result = (char*) malloc(sizeof(char) * 8193);
+    size_t size = strlen(content);
+    char *result = (char*) malloc(sizeof(char) * (size * 2 + 1));
     if (!result){
         fprintf(stderr, "Error: malloc failed in encoder.c:11\n");
         exit(-1);

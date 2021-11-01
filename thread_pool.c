@@ -57,18 +57,25 @@ int init_thread_pool(long thread_count, char **argv){
         fprintf(stderr, "Error: malloc failed in thread_pool.c:55\n");
         exit(-1);
     }
-    char c = '0';
     for (int i = 0; i < task_count; i++){
+        char c = (char)i;
+//        threadPool->result_lock[i] = (sem_t*) malloc(sizeof(sem_t));
+//        int c = sem_init(threadPool->result_lock[i], 0, 0);
         threadPool->result_lock[i] = sem_open(&c, O_CREAT, 0644, 0);
         if (threadPool->result_lock[i] == SEM_FAILED){
             fprintf(stderr, "Error: sem_open failed, errno: %d\n", errno);
             exit(-1);
         }
+//        if (c == -1){
+//            fprintf(stderr, "Error: sem_init failed, errno: %d\n", errno);
+//            exit(-1);
+//        }
     }
     threadPool->result_lock[task_count] = NULL;
 
     threadPool->thread_count = thread_count;
-    threadPool->threads = (pthread_t*) malloc(sizeof(pthread_t) * thread_count);
+    threadPool->threads = (pthread_t*) malloc(sizeof(pthread_t) * (thread_count + 1));
+    threadPool->threads[thread_count] = 0;
     if (!threadPool->threads){
         fprintf(stderr, "Error: malloc failed in thread_pool.c:71\n");
         exit(-1);

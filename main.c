@@ -34,13 +34,10 @@ int main(int argc, char **argv) {
         char *result;
         size_t res_len;
         for(int i = 0; i < task_count; i++){
-            sleep(1);
             if (sem_wait(threadPool->result_lock[i]) == -1){
                 fprintf(stderr, "Error: sem_wait failed, errno: %d\n", errno);
                 exit(-1);
             }
-            fprintf(stderr, "main down %d\n", i);
-            printf("%d\n", i);
             result = threadPool->result[i];
             res_len = strlen(result) - 2; // TODO:: bug
 
