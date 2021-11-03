@@ -9,3 +9,4 @@
 
 void single_thread(char **argv);
 void *thread_runner();
+void *collect_result();

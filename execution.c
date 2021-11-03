@@ -10,6 +10,7 @@
 #include <sys/mman.h>
 #include <semaphore.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include "thread_pool.h"
 #include "execution.h"
@@ -54,39 +55,108 @@ void single_thread(char **argv){
 }
 
 
-
-
-
 void *thread_runner(){
+    int status;
     char *task = (char*) malloc(sizeof(char) * 4097);
     if (!task){
         fprintf(stderr, "Error: malloc failed in execution.c:61\n");
         exit(-1);
     }
     int task_id;
-    int times = 1;
     while(1){
+        char *result;
         pthread_mutex_lock(threadPool->task_queue_lock);
+        if (!(threadPool->task_head->next)){
+            pthread_cond_wait(threadPool->remain_task_cond, threadPool->task_queue_lock);
+            if (threadPool->task_submission_finished == 1){
+                pthread_mutex_lock(threadPool->thread_count_lock);
+                threadPool->thread_count--;
+                pthread_mutex_unlock(threadPool->thread_count_lock);
+                pthread_cond_signal(threadPool->remain_task_cond);
+                pthread_mutex_unlock(threadPool->task_queue_lock);
+                fprintf(stderr, "thread: %u unlocked task queue\n", pthread_self());
 
-        if (threadPool->remain_task == 0){
-
-            threadPool->thread_count--;
-            pthread_mutex_unlock(threadPool->task_queue_lock);
-            pthread_exit(NULL);
+                fprintf(stderr, "thread: %u exited\n", pthread_self());
+                pthread_exit(NULL);
+            }
         }
         else{
-            task_id = threadPool->task_head->next->task_id;
-            (threadPool->remain_task)--;
-            strncpy(task, threadPool->task_head->next->task_string, sizeof(char) * 4096);
-            task[4096] = '\0';
-            task_queue *tmp = threadPool->task_head->next;
-            threadPool->task_head->next = tmp->next;
-            free(tmp);
-            pthread_mutex_unlock(threadPool->task_queue_lock);
+            pthread_cond_wait(threadPool->remain_task_cond, threadPool->task_queue_lock);
         }
-        times++;
+        fprintf(stderr, "thread: %u locked task queue\n", pthread_self());
+        task_id = threadPool->task_head->next->task_id;     // TODO:: bug
+        strncpy(task, threadPool->task_head->next->task_string, sizeof(char) * 4096);
+        task_queue *tmp = threadPool->task_head->next;
+        threadPool->task_head->next = tmp->next;
+//        threadPool->remain_task--;
+        if (!threadPool->task_head->next){
+            threadPool->task_tail = threadPool->task_head;
+        }
+        pthread_mutex_unlock(threadPool->task_queue_lock);
+        fprintf(stderr, "thread: %u unlocked task queue\n", pthread_self());
+        task[4096] = '\0';
+        free(tmp);
+        result = encoding(task);
+        pthread_mutex_lock(threadPool->read_lock[task_id % 100]);
+        if (threadPool->result_status[task_id % 100] == 1){
+            pthread_cond_wait(threadPool->read_cond[task_id % 100], threadPool->read_lock[task_id % 100]);
+        }
 
-        threadPool->result[task_id] = encoding(task);
-        sem_post(threadPool->result_lock[task_id]);
+        threadPool->result[task_id % 100] = result;
+        threadPool->result_status[task_id % 100] = 1;
+        pthread_cond_signal(threadPool->read_cond[task_id % 100]);
+        pthread_mutex_unlock(threadPool->read_lock[task_id % 100]);
+        fprintf(stderr, "thread: %u write result: %d\n", pthread_self(), task_id);
+    }
+}
+
+
+void *collect_result(){
+    char reserved[3];
+    char *result;
+    size_t res_len;
+    for (long i = 0; ; i++){
+        pthread_mutex_lock(threadPool->task_count_lock);
+        if (i == threadPool->task_count){
+            pthread_mutex_unlock(threadPool->task_count_lock);
+            pthread_mutex_lock(threadPool->thread_count_lock);
+            if (threadPool->thread_count == 0){
+                pthread_mutex_unlock(threadPool->thread_count_lock);
+//                printf("%s", reserved);
+                pthread_mutex_lock(threadPool->task_finished_lock);
+                threadPool->task_finished = 1;
+                pthread_cond_signal(threadPool->all_task_finished);
+                pthread_mutex_unlock(threadPool->task_finished_lock);
+
+                fprintf(stderr, "result thread exited\n");
+                pthread_exit(NULL);
+            }
+            pthread_mutex_unlock(threadPool->thread_count_lock);
+        }
+
+        pthread_mutex_unlock(threadPool->task_count_lock);
+        pthread_mutex_lock(threadPool->read_lock[i % 100]);
+        fprintf(stderr, "result thread locked result\n");
+        if (threadPool->result_status[i % 100] == 0){
+            fprintf(stderr, "result thread waiting on result, unlocked\n");
+            pthread_cond_wait(threadPool->read_cond[i % 100], threadPool->read_lock[i % 100]);
+            fprintf(stderr, "result thread locked result again\n");
+        }
+        fprintf(stderr, "result thread reading result %ld\n", i);
+        result = threadPool->result[i % 100];
+        threadPool->result_status[i % 100] = 0;
+        pthread_cond_signal(threadPool->read_cond[i % 100]);
+        pthread_mutex_unlock(threadPool->read_lock[i % 100]);
+        fprintf(stderr, "result thread unlocked result\n");
+        res_len = strlen(result) - 2;
+        if (reserved[0] == result[0]){
+            result[1] += reserved[1];
+        }
+        else{
+//            printf("%s", reserved);
+        }
+        strncpy(reserved, result + res_len, 2);
+        result[res_len] = '\0';
+//        printf("%s", result);
     }
 }

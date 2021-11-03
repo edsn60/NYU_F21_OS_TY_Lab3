@@ -8,11 +8,18 @@
 #include <sys/fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <errno.h>
 
 #include "task_manager.h"
+#include "thread_pool.h"
 
 
-int submit_task(char **argv, task_queue **tail){
+extern thread_pool* threadPool;
+
+
+int submit_task(char **argv){
     int task_id = 0;
     struct stat st;
     char *addr;
@@ -36,37 +43,62 @@ int submit_task(char **argv, task_queue **tail){
                 fprintf(stderr, "Error: mmap failed in 1\n");
                 exit(-1);
             }
-            (*tail)->next = (task_queue*) malloc(sizeof(task_queue));
-            if (!(*tail)->next){
+            pthread_mutex_lock(threadPool->task_queue_lock);
+            if (!threadPool->task_head->next){
+                threadPool->task_tail = threadPool->task_head;
+            }
+            fprintf(stderr, "submitting task %d\n", task_id);
+            threadPool->task_tail->next = (task_queue*) malloc(sizeof(task_queue));
+            if (!(threadPool->task_tail->next)){
                 fprintf(stderr, "Error: malloc failed in task_manager.c:39\n");
                 exit(-1);
             }
-            (*tail) = (*tail)->next;
-            (*tail)->next = NULL;
-            (*tail)->task_id = task_id;
-            task_id++;
-            (*tail)->task_string = addr;
+            threadPool->task_tail = threadPool->task_tail->next;
+            threadPool->task_tail->next = NULL;
+            threadPool->task_tail->task_id = task_id;
+            threadPool->task_tail->task_string = addr;
+            pthread_mutex_lock(threadPool->task_count_lock);
+            threadPool->task_count++;
+            pthread_mutex_unlock(threadPool->task_count_lock);
+//            threadPool->remain_task++;
+            pthread_cond_signal(threadPool->remain_task_cond);
+            pthread_mutex_unlock(threadPool->task_queue_lock);
+
+            fprintf(stderr, "task %d submitted\n", task_id);
             offset += page_size;
+            task_id++;
         }
         if (offset < file_size){
             size_t len = file_size-offset;
             addr = mmap(0, len, PROT_READ, MAP_SHARED, fd, offset);
             if (addr == MAP_FAILED){
-                fprintf(stderr, "Error: mmap failed in 2\n");
+                fprintf(stderr, "Error: mmap failed in task_manager.c: 62\n");
                 exit(-1);
             }
-            (*tail)->next = (task_queue*) malloc(sizeof(task_queue));
-            if (!(*tail)->next){
+            pthread_mutex_lock(threadPool->task_queue_lock);
+            fprintf(stderr, "submitting task %d\n", task_id);
+            threadPool->task_tail->next = (task_queue*) malloc(sizeof(task_queue));
+            if (!(threadPool->task_tail->next)){
                 fprintf(stderr, "Error: malloc failed in task_manager.c:58\n");
                 exit(-1);
             }
-            (*tail) = (*tail)->next;
-            (*tail)->next = NULL;
-            (*tail)->task_id = task_id;
+            threadPool->task_tail = threadPool->task_tail->next;
+            threadPool->task_tail->next = NULL;
+            threadPool->task_tail->task_id = task_id;
+            threadPool->task_tail->task_string = addr;
+            pthread_mutex_lock(threadPool->task_count_lock);
+            threadPool->task_count++;
+            pthread_mutex_unlock(threadPool->task_count_lock);
+//            threadPool->remain_task++;
+
+            threadPool->task_submission_finished = 1;
+            pthread_cond_signal(threadPool->remain_task_cond);
+            pthread_mutex_unlock(threadPool->task_queue_lock);
+            fprintf(stderr, "task %d submitted\n", task_id);
             task_id++;
-            (*tail)->task_string = addr;
         }
         close(fd);
     }
+    fprintf(stderr, "All tasks submitted, total: %d\n", task_id);
     return task_id;
 }

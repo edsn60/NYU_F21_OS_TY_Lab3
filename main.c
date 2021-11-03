@@ -5,7 +5,6 @@
 #include <pthread.h>
 #include <sys/mman.h>
 #include <semaphore.h>
-#include <errno.h>
 
 #include "thread_pool.h"
 #include "execution.h"
@@ -30,29 +29,13 @@ int main(int argc, char **argv) {
         char *arg = optarg;
         long threads_count = strtol(arg, NULL, 10);
         int task_count = init_thread_pool(threads_count, argv);
-        char reserved[3];
-        char *result;
-        size_t res_len;
-        for(int i = 0; i < task_count; i++){
-            if (sem_wait(threadPool->result_lock[i]) == -1){
-                fprintf(stderr, "Error: sem_wait failed, errno: %d\n", errno);
-                exit(-1);
-            }
-            result = threadPool->result[i];
-            res_len = strlen(result) - 2; // TODO:: bug
-
-            if (reserved[0] == result[0]){
-                result[1] += reserved[1];
-            }
-            else{
-                printf("%s", reserved);
-            }
-            strncpy(reserved, result + res_len, 2);
-            result[res_len] = '\0';
-            printf("%s", result);
+        pthread_mutex_lock(threadPool->task_finished_lock);
+        if (threadPool->task_finished == 0){
+            pthread_cond_wait(threadPool->all_task_finished, threadPool->task_finished_lock);
         }
-        printf("%s", reserved);
-        for (pthread_t *thread = threadPool->threads; *thread; thread++){
+//        sem_wait(threadPool->sem_read_finished);
+        pthread_join(threadPool->result_handling_thread, NULL);
+        for (pthread_t *thread = threadPool->worker_threads; *thread; thread++){
             pthread_join(*thread, NULL);
         }
     }
