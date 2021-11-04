@@ -7,10 +7,9 @@
 #include <stdio.h>
 
 
-char *encoding(char *content){
-    long size = strlen(content);
-//    fprintf(stderr, "content size: %d\n", size);
-    char *result = (char*) malloc(sizeof(char) * (size * 2 + 1));
+unsigned char *encoding(char *content){
+    size_t size = strlen(content);
+    unsigned char *result = (unsigned char*) malloc(sizeof(unsigned char) * (size * 2 + 1));
     if (!result){
         fprintf(stderr, "Error: malloc failed in encoder.c:12\n");
         exit(-1);

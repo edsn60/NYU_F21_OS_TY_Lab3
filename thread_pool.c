@@ -5,10 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <sys/fcntl.h>
 #include <sys/mman.h>
 #include <semaphore.h>
-#include <errno.h>
 
 #include "thread_pool.h"
 #include "task_manager.h"
@@ -101,7 +99,6 @@ void init_thread_pool(long thread_count, char **argv){
         fprintf(stderr, "Error: malloc failed in thread_pool.c:87\n");
         exit(-1);
     }
-//    threadPool->worker_threads[thread_count] = 0;
 
     for (int i = 0; i < thread_count; i++){
         pthread_create(&(threadPool->worker_threads[i]), NULL, thread_runner, NULL);

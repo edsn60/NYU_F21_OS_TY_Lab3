@@ -23,12 +23,13 @@ void submit_task(char *task, int task_id, int isfinished){
     if (!threadPool->task_head->next){
         threadPool->task_tail = threadPool->task_head;
     }
-//    fprintf(stderr, "submitting task %d\n", task_id);
+
     threadPool->task_tail->next = (task_queue*) malloc(sizeof(task_queue));
     if (!(threadPool->task_tail->next)){
         fprintf(stderr, "Error: malloc failed in task_manager.c:28\n");
         exit(-1);
     }
+
     threadPool->task_tail = threadPool->task_tail->next;
     threadPool->task_tail->next = NULL;
     threadPool->task_tail->task_id = task_id;
@@ -36,14 +37,14 @@ void submit_task(char *task, int task_id, int isfinished){
     pthread_mutex_lock(threadPool->task_count_lock);
     threadPool->task_count++;
     pthread_mutex_unlock(threadPool->task_count_lock);
+
     if (isfinished){
         pthread_mutex_lock(threadPool->task_submission_finished_lock);
         threadPool->task_submission_finished = 1;
         pthread_mutex_unlock(threadPool->task_submission_finished_lock);
-//        fprintf(stderr, "all task submitted %d\n", task_id);
     }
+
     sem_post(threadPool->remain_task);
-//    fprintf(stderr, "submitting task %d\n", task_id);
     pthread_mutex_unlock(threadPool->task_queue_lock);
 }
 
@@ -54,9 +55,10 @@ void generate_task(char **argv){
     char *addr;
     off_t page_size = sysconf(_SC_PAGE_SIZE);
     off_t remain_size = page_size;
+
     char *task = (char *) malloc(sizeof(char) * (page_size + 1));
+
     for (char **c = &argv[optind]; *c; c++) {
-//        fprintf(stderr, "file name: %s\n", *c);
 
         int fd = open(*c, O_RDONLY);
         if (fd == -1) {

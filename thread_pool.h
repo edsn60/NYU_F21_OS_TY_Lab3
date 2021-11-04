@@ -30,7 +30,7 @@ typedef struct ThreadPool{
     sem_t *remain_task;
 
 
-    char *result[100];
+    unsigned char *result[100];
     sem_t *read_result[100];
     sem_t *write_result[100];
 

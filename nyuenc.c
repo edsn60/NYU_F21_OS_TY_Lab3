@@ -39,19 +39,15 @@ int main(int argc, char **argv) {
         free(threadPool->worker_threads);
 
         free(threadPool->task_tail);
-//        fprintf(stderr, "freed threadPool->task_tail\n");
         for(int i = 0; i < RESULT_BUFFER_SIZE; i++){
             free(threadPool->read_result[i]);
             free(threadPool->write_result[i]);
         }
         pthread_mutex_destroy(threadPool->task_count_lock);
         free(threadPool->task_count_lock);
-//        fprintf(stderr, "freed threadPool->task_count_lock\n");
         pthread_mutex_destroy(threadPool->thread_count_lock);
         free(threadPool->thread_count_lock);
-//        fprintf(stderr, "freed threadPool->thread_count_lock\n");
         pthread_mutex_destroy(threadPool->task_queue_lock);
         free(threadPool->task_queue_lock);
-//        fprintf(stderr, "freed threadPool->task_queue_lock\n");
     }
 }
