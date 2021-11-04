@@ -10,8 +10,6 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include <errno.h>
-#include <string.h>
 
 #include "task_manager.h"
 #include "thread_pool.h"

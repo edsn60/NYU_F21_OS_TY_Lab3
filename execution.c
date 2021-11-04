@@ -10,7 +10,6 @@
 #include <sys/mman.h>
 #include <semaphore.h>
 #include <sys/stat.h>
-#include <signal.h>
 
 #include "thread_pool.h"
 #include "execution.h"
@@ -19,12 +18,6 @@
 #include "nyuenc.h"
 
 extern thread_pool* threadPool;
-
-
-void signal_handler(){
-//    fprintf(stderr, "thread %u exited\n", pthread_self());
-    pthread_exit(NULL);
-}
 
 
 void single_thread(char **argv){
@@ -62,7 +55,7 @@ void single_thread(char **argv){
 
 
 void *thread_runner(){
-    signal(SIGINT, signal_handler);
+//    signal(SIGINT, signal_handler);
     char *task;
     int task_id;
     while(1){
@@ -72,6 +65,19 @@ void *thread_runner(){
         char *result;
         pthread_mutex_lock(threadPool->task_queue_lock);
 //        fprintf(stderr, "thread: %u locked task queue\n", pthread_self());
+        pthread_mutex_lock(threadPool->task_submission_finished_lock);
+        if (threadPool->task_submission_finished == 1){
+            pthread_mutex_unlock(threadPool->task_submission_finished_lock);
+            if (!(threadPool->task_head->next)){
+                threadPool->task_tail = threadPool->task_head;
+                sem_post(threadPool->remain_task);
+                pthread_mutex_unlock(threadPool->task_queue_lock);
+//                fprintf(stderr, "worker thread: %u locked exited\n", pthread_self());
+                pthread_exit(NULL);
+            }
+        }
+        pthread_mutex_unlock(threadPool->task_submission_finished_lock);
+
         task_id = threadPool->task_head->next->task_id;
         task = threadPool->task_head->next->task_string;
         task_queue *tmp = threadPool->task_head->next;
@@ -110,6 +116,7 @@ void *collect_result(){
             if (i == threadPool->task_count) {
                 pthread_mutex_unlock(threadPool->task_count_lock);
                 sem_post(threadPool->all_task_finished);
+                sem_post(threadPool->remain_task);
 //                fprintf(stderr, "read task finished %ld\n", i);
                 printf("%s", reserved);
 //                fprintf(stderr, "result thread exited\n");

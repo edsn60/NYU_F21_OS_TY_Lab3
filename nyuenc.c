@@ -5,7 +5,6 @@
 #include <pthread.h>
 #include <sys/mman.h>
 #include <semaphore.h>
-#include <signal.h>
 
 #include "thread_pool.h"
 #include "execution.h"
@@ -35,7 +34,6 @@ int main(int argc, char **argv) {
         sem_wait(threadPool->all_task_finished);
         pthread_join(threadPool->result_handling_thread, NULL);
         for (long i = 0; i < threads_count; i++){
-            pthread_kill(threadPool->worker_threads[i], SIGINT);
             pthread_join(threadPool->worker_threads[i], NULL);
         }
         free(threadPool->worker_threads);
