@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
         sem_wait(threadPool->all_task_finished);
         pthread_join(threadPool->result_handling_thread, NULL);
         for (long i = 0; i < threads_count; i++){
-            pthread_kill(threadPool->worker_threads[i], SIGTERM);
+            pthread_kill(threadPool->worker_threads[i], SIGINT);
             pthread_join(threadPool->worker_threads[i], NULL);
         }
         free(threadPool->worker_threads);

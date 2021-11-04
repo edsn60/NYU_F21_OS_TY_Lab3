@@ -62,7 +62,7 @@ void single_thread(char **argv){
 
 
 void *thread_runner(){
-    signal(SIGTERM, signal_handler);
+    signal(SIGINT, signal_handler);
     char *task;
     int task_id;
     while(1){
