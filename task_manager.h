@@ -13,4 +13,4 @@ typedef struct TaskQueue{
 
 #endif //NYU_F21_OS_TY_LAB3_TASK_MANAGER_H
 
-int submit_task(char **argv);
+void generate_task(char **argv);
