@@ -56,35 +56,35 @@ void init_thread_pool(long thread_count, char **argv){
     pthread_mutex_init(threadPool->task_queue_lock, NULL);
 
     for (int i = 0; i < RESULT_BUFFER_SIZE; i++){
-        threadPool->read_result[i] = (sem_t*) malloc(sizeof(sem_t));
-        sem_init(threadPool->read_result[i], 0, 0);
-        threadPool->write_result[i] = (sem_t*) malloc(sizeof(sem_t));
-        sem_init(threadPool->write_result[i], 0, 1);
-//        char c1 = (char)i;
-//        char c2 = (char)(i+100);
-//        threadPool->read_result[i] = sem_open(&c1, O_CREAT, 0644, 0);
-//        if (threadPool->read_result[i] == SEM_FAILED){
-//            fprintf(stderr, "Error: threadPool->read_result[%d] failed\n", i);
-//        }
-//        threadPool->write_result[i] = sem_open(&c2, O_CREAT, 0644, 1);
-//        if (threadPool->write_result[i] == SEM_FAILED){
-//            fprintf(stderr, "Error: threadPool->write_result[%d] failed\n", i);
-//        }
+//        threadPool->read_result[i] = (sem_t*) malloc(sizeof(sem_t));
+//        sem_init(threadPool->read_result[i], 0, 0);
+//        threadPool->write_result[i] = (sem_t*) malloc(sizeof(sem_t));
+//        sem_init(threadPool->write_result[i], 0, 1);
+        char c1 = (char)i;
+        char c2 = (char)(i+RESULT_BUFFER_SIZE);
+        threadPool->read_result[i] = sem_open(&c1, O_CREAT, 0644, 0);
+        if (threadPool->read_result[i] == SEM_FAILED){
+            fprintf(stderr, "Error: threadPool->read_result[%d] failed\n", i);
+        }
+        threadPool->write_result[i] = sem_open(&c2, O_CREAT, 0644, 1);
+        if (threadPool->write_result[i] == SEM_FAILED){
+            fprintf(stderr, "Error: threadPool->write_result[%d] failed\n", i);
+        }
     }
-    threadPool->all_task_finished = (sem_t*) malloc(sizeof(sem_t));
-    sem_init(threadPool->all_task_finished, 0, 0);
-
-    threadPool->remain_task = (sem_t*) malloc(sizeof(sem_t));
-    sem_init(threadPool->remain_task, 0, 0);
+//    threadPool->all_task_finished = (sem_t*) malloc(sizeof(sem_t));
+//    sem_init(threadPool->all_task_finished, 0, 0);
 //
-//    threadPool->all_task_finished = sem_open("/all_task_finished", O_CREAT, 0644, 0);
-//    if (threadPool->all_task_finished == SEM_FAILED){
-//        fprintf(stderr, "Error: threadPool->all_task_finished failed\n");
-//    }
-//    threadPool->remain_task = sem_open("/remain_task", O_CREAT, 0644, 0);
-//    if (threadPool->remain_task == SEM_FAILED){
-//        fprintf(stderr, "Error: threadPool->remain_task failed\n");
-//    }
+//    threadPool->remain_task = (sem_t*) malloc(sizeof(sem_t));
+//    sem_init(threadPool->remain_task, 0, 0);
+
+    threadPool->all_task_finished = sem_open("/all_task_finished", O_CREAT, 0644, 0);
+    if (threadPool->all_task_finished == SEM_FAILED){
+        fprintf(stderr, "Error: threadPool->all_task_finished failed\n");
+    }
+    threadPool->remain_task = sem_open("/remain_task", O_CREAT, 0644, 0);
+    if (threadPool->remain_task == SEM_FAILED){
+        fprintf(stderr, "Error: threadPool->remain_task failed\n");
+    }
 
     threadPool->thread_count_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
     if (!threadPool->task_count_lock){

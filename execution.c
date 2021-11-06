@@ -89,7 +89,7 @@ void *thread_runner(){
         tmp->next = NULL;
         free(tmp);
         sem_wait(threadPool->write_result[task_id % RESULT_BUFFER_SIZE]);
-        threadPool->result[task_id % 100] = result;
+        threadPool->result[task_id % RESULT_BUFFER_SIZE] = result;
         sem_post(threadPool->read_result[task_id % RESULT_BUFFER_SIZE]);
     }
 }

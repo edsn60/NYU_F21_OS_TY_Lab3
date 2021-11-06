@@ -3,6 +3,7 @@
 //
 
 #include "task_manager.h"
+#include "nyuenc.h"
 
 #ifndef NYU_F21_OS_TY_LAB3_THREAD_POOL_H
 #define NYU_F21_OS_TY_LAB3_THREAD_POOL_H
@@ -30,9 +31,9 @@ typedef struct ThreadPool{
     sem_t *remain_task;
 
 
-    unsigned char *result[100];
-    sem_t *read_result[100];
-    sem_t *write_result[100];
+    unsigned char *result[RESULT_BUFFER_SIZE];
+    sem_t *read_result[RESULT_BUFFER_SIZE];
+    sem_t *write_result[RESULT_BUFFER_SIZE];
 
 
 }thread_pool;
