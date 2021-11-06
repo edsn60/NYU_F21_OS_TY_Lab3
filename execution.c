@@ -57,21 +57,21 @@ void single_thread(char **argv){
 void *thread_runner(){
 
     while(1){
-        sem_wait(threadPool->remain_task);
+//        sem_wait(threadPool->remain_task);
 
 
         pthread_mutex_lock(threadPool->task_queue_lock);
-        pthread_mutex_lock(threadPool->task_submission_finished_lock);
-        if (threadPool->task_submission_finished == 1){
-            pthread_mutex_unlock(threadPool->task_submission_finished_lock);
+//        pthread_mutex_lock(threadPool->task_submission_finished_lock);
+//        if (threadPool->task_submission_finished == 1){
+//            pthread_mutex_unlock(threadPool->task_submission_finished_lock);
             if (!(threadPool->task_head->next)){
                 threadPool->task_tail = threadPool->task_head;
-                sem_post(threadPool->remain_task);
+//                sem_post(threadPool->remain_task);
                 pthread_mutex_unlock(threadPool->task_queue_lock);
                 pthread_exit(NULL);
             }
-        }
-        pthread_mutex_unlock(threadPool->task_submission_finished_lock);
+//        }
+//        pthread_mutex_unlock(threadPool->task_submission_finished_lock);
 
         unsigned char *result;
         task_queue *tmp = threadPool->task_head->next;
@@ -84,49 +84,50 @@ void *thread_runner(){
         pthread_mutex_unlock(threadPool->task_queue_lock);
         result = encoding(tmp->task_string, tmp->task_size);
 
-        sem_wait(threadPool->write_result[tmp->task_id % RESULT_BUFFER_SIZE]);
-        threadPool->result[tmp->task_id % RESULT_BUFFER_SIZE] = result;
-        sem_post(threadPool->read_result[tmp->task_id % RESULT_BUFFER_SIZE]);
+//        sem_wait(threadPool->write_result[tmp->task_id % RESULT_BUFFER_SIZE]);
+        threadPool->result[tmp->task_id] = result;
+        sem_post(threadPool->result_sem[tmp->task_id]);
+//        sem_post(threadPool->read_result[tmp->task_id % RESULT_BUFFER_SIZE]);
         tmp->next = NULL;
         free(tmp);
     }
 }
 
 
-void *collect_result(){
-    unsigned char reserved[3] = {'\0'};
-    unsigned char *result;
-    size_t res_len;
-    for (long i = 0; ; i++){
-        pthread_mutex_lock(threadPool->task_submission_finished_lock);
-        if (threadPool->task_submission_finished == 1) {
-            pthread_mutex_unlock(threadPool->task_submission_finished_lock);
-            pthread_mutex_lock(threadPool->task_count_lock);
-            if (i == threadPool->task_count) {
-                pthread_mutex_unlock(threadPool->task_count_lock);
-                sem_post(threadPool->all_task_finished);
-                sem_post(threadPool->remain_task);
-                printf("%s", reserved);
-                pthread_exit(NULL);
-            }
-            pthread_mutex_unlock(threadPool->task_count_lock);
-        }
-        else{
-            pthread_mutex_unlock(threadPool->task_submission_finished_lock);
-        }
-        sem_wait(threadPool->read_result[i % RESULT_BUFFER_SIZE]);
-        result = threadPool->result[i % RESULT_BUFFER_SIZE];
-        sem_post(threadPool->write_result[i % RESULT_BUFFER_SIZE]);
-        res_len = strlen((char*)result) - 2;
-        if (reserved[0] == result[0]){
-            result[1] += reserved[1];
-        }
-        else{
-            printf("%s", reserved);
-        }
-        strncpy(reserved, result + res_len, 2);
-        result[res_len] = '\0';
-        printf("%s", result);
-        free(result);
-    }
-}
+//void *collect_result(){
+//    unsigned char reserved[3] = {'\0'};
+//    unsigned char *result;
+//    size_t res_len;
+//    for (long i = 0; ; i++){
+//        pthread_mutex_lock(threadPool->task_submission_finished_lock);
+//        if (threadPool->task_submission_finished == 1) {
+//            pthread_mutex_unlock(threadPool->task_submission_finished_lock);
+//            pthread_mutex_lock(threadPool->task_count_lock);
+//            if (i == threadPool->task_count) {
+//                pthread_mutex_unlock(threadPool->task_count_lock);
+//                sem_post(threadPool->all_task_finished);
+//                sem_post(threadPool->remain_task);
+//                printf("%s", reserved);
+//                pthread_exit(NULL);
+//            }
+//            pthread_mutex_unlock(threadPool->task_count_lock);
+//        }
+//        else{
+//            pthread_mutex_unlock(threadPool->task_submission_finished_lock);
+//        }
+//        sem_wait(threadPool->read_result[i % RESULT_BUFFER_SIZE]);
+//        result = threadPool->result[i % RESULT_BUFFER_SIZE];
+//        sem_post(threadPool->write_result[i % RESULT_BUFFER_SIZE]);
+//        res_len = strlen((char*)result) - 2;
+//        if (reserved[0] == result[0]){
+//            result[1] += reserved[1];
+//        }
+//        else{
+//            printf("%s", reserved);
+//        }
+//        strncpy(reserved, result + res_len, 2);
+//        result[res_len] = '\0';
+//        printf("%s", result);
+//        free(result);
+//    }
+//}

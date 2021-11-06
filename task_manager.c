@@ -18,11 +18,11 @@
 extern thread_pool* threadPool;
 
 
-void submit_task(char *task, int task_id, size_t task_size, int isfinished){
-    pthread_mutex_lock(threadPool->task_queue_lock);
-    if (!threadPool->task_head->next){
-        threadPool->task_tail = threadPool->task_head;
-    }
+void submit_task(char *task, int task_id, size_t task_size){
+//    pthread_mutex_lock(threadPool->task_queue_lock);
+//    if (!threadPool->task_head->next){
+//        threadPool->task_tail = threadPool->task_head;
+//    }
 
     threadPool->task_tail->next = (task_queue*) malloc(sizeof(task_queue));
     if (!(threadPool->task_tail->next)){
@@ -35,18 +35,18 @@ void submit_task(char *task, int task_id, size_t task_size, int isfinished){
     threadPool->task_tail->task_id = task_id;
     threadPool->task_tail->task_string = task;
     threadPool->task_tail->task_size = task_size;
-    pthread_mutex_lock(threadPool->task_count_lock);
+//    pthread_mutex_lock(threadPool->task_count_lock);
     threadPool->task_count++;
-    pthread_mutex_unlock(threadPool->task_count_lock);
+//    pthread_mutex_unlock(threadPool->task_count_lock);
 
-    if (isfinished){
-        pthread_mutex_lock(threadPool->task_submission_finished_lock);
-        threadPool->task_submission_finished = 1;
-        pthread_mutex_unlock(threadPool->task_submission_finished_lock);
-    }
-
-    sem_post(threadPool->remain_task);
-    pthread_mutex_unlock(threadPool->task_queue_lock);
+//    if (isfinished){
+//        pthread_mutex_lock(threadPool->task_submission_finished_lock);
+//        threadPool->task_submission_finished = 1;
+//        pthread_mutex_unlock(threadPool->task_submission_finished_lock);
+//    }
+//
+//    sem_post(threadPool->remain_task);
+//    pthread_mutex_unlock(threadPool->task_queue_lock);
 }
 
 
@@ -70,19 +70,14 @@ void generate_task(int argc, char **argv){
         off_t file_size = st.st_size;
         addr = mmap(0, file_size, PROT_READ, MAP_SHARED, fd, 0);
         while (file_size >= page_size) {
-            submit_task(addr, task_id, page_size, 0);
+            submit_task(addr, task_id, page_size);
             addr += page_size;
             file_size -= page_size;
             task_id++;
         }
-        if (file_size < page_size) {
-            if (i == argc - 1){
-                submit_task(addr, task_id, file_size, 1);
-            }
-            else{
-                submit_task(addr, task_id, file_size, 0);
-                task_id++;
-            }
+        if (file_size < page_size){
+            submit_task(addr, task_id, file_size);
+            task_id++;
         }
     }
 }

@@ -33,20 +33,20 @@ void init_thread_pool(long thread_count, int argc, char **argv){
     threadPool->task_head->next = NULL;
     threadPool->task_head->task_id = -1;
     threadPool->task_tail = threadPool->task_head;
-    threadPool->task_submission_finished_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
-    if (!threadPool->task_submission_finished_lock){
-        fprintf(stderr, "Error: malloc failed in thread_pool.c:37\n");
-        exit(-1);
-    }
-    pthread_mutex_init(threadPool->task_submission_finished_lock, NULL);
-    threadPool->task_submission_finished = 0;
+//    threadPool->task_submission_finished_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
+//    if (!threadPool->task_submission_finished_lock){
+//        fprintf(stderr, "Error: malloc failed in thread_pool.c:37\n");
+//        exit(-1);
+//    }
+//    pthread_mutex_init(threadPool->task_submission_finished_lock, NULL);
+//    threadPool->task_submission_finished = 0;
     threadPool->task_count = 0;
-    threadPool->task_count_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
-    if (!threadPool->task_count_lock){
-        fprintf(stderr, "Error: malloc failed in thread_pool.c:46\n");
-        exit(-1);
-    }
-    pthread_mutex_init(threadPool->task_count_lock, NULL);
+//    threadPool->task_count_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
+//    if (!threadPool->task_count_lock){
+//        fprintf(stderr, "Error: malloc failed in thread_pool.c:46\n");
+//        exit(-1);
+//    }
+//    pthread_mutex_init(threadPool->task_count_lock, NULL);
 
     threadPool->task_queue_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
     if (!threadPool->task_queue_lock){
@@ -54,12 +54,16 @@ void init_thread_pool(long thread_count, int argc, char **argv){
         exit(-1);
     }
     pthread_mutex_init(threadPool->task_queue_lock, NULL);
-
-    for (int i = 0; i < RESULT_BUFFER_SIZE; i++){
-        threadPool->read_result[i] = (sem_t*) malloc(sizeof(sem_t));
-        sem_init(threadPool->read_result[i], 0, 0);
-        threadPool->write_result[i] = (sem_t*) malloc(sizeof(sem_t));
-        sem_init(threadPool->write_result[i], 0, 1);
+    generate_task(argc, argv);
+    threadPool->result = (unsigned char**) malloc(sizeof(unsigned char*) * threadPool->task_count);
+    threadPool->result_sem = (sem_t**) malloc(sizeof(sem_t*) * threadPool->task_count);
+    for (int i = 0; i < threadPool->task_count; i++){
+        threadPool->result_sem[i] = (sem_t*) malloc(sizeof(sem_t));
+        sem_init(threadPool->result_sem[i], 0, 0);
+//        threadPool->read_result[i] = (sem_t*) malloc(sizeof(sem_t));
+//        sem_init(threadPool->read_result[i], 0, 0);
+//        threadPool->write_result[i] = (sem_t*) malloc(sizeof(sem_t));
+//        sem_init(threadPool->write_result[i], 0, 1);
 //        char c1 = (char)i;
 //        char c2 = (char)(i+RESULT_BUFFER_SIZE);
 //        threadPool->read_result[i] = sem_open(&c1, O_CREAT, 0644, 0);
@@ -71,11 +75,11 @@ void init_thread_pool(long thread_count, int argc, char **argv){
 //            fprintf(stderr, "Error: threadPool->write_result[%d] failed\n", i);
 //        }
     }
-    threadPool->all_task_finished = (sem_t*) malloc(sizeof(sem_t));
-    sem_init(threadPool->all_task_finished, 0, 0);
+//    threadPool->all_task_finished = (sem_t*) malloc(sizeof(sem_t));
+//    sem_init(threadPool->all_task_finished, 0, 0);
 
-    threadPool->remain_task = (sem_t*) malloc(sizeof(sem_t));
-    sem_init(threadPool->remain_task, 0, 0);
+//    threadPool->remain_task = (sem_t*) malloc(sizeof(sem_t));
+//    sem_init(threadPool->remain_task, 0, 0);
 
 //    threadPool->all_task_finished = sem_open("/all_task_finished", O_CREAT, 0644, 0);
 //    if (threadPool->all_task_finished == SEM_FAILED){
@@ -86,12 +90,12 @@ void init_thread_pool(long thread_count, int argc, char **argv){
 //        fprintf(stderr, "Error: threadPool->remain_task failed\n");
 //    }
 
-    threadPool->thread_count_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
-    if (!threadPool->task_count_lock){
-        fprintf(stderr, "Error: malloc failed in thread_pool.c:79\n");
-        exit(-1);
-    }
-    pthread_mutex_init(threadPool->thread_count_lock, NULL);
+//    threadPool->thread_count_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
+//    if (!threadPool->task_count_lock){
+//        fprintf(stderr, "Error: malloc failed in thread_pool.c:79\n");
+//        exit(-1);
+//    }
+//    pthread_mutex_init(threadPool->thread_count_lock, NULL);
 
     threadPool->thread_count = thread_count;
     threadPool->worker_threads = (pthread_t*) malloc(sizeof(pthread_t) * (thread_count + 1));
@@ -104,7 +108,5 @@ void init_thread_pool(long thread_count, int argc, char **argv){
         pthread_create(&(threadPool->worker_threads[i]), NULL, thread_runner, NULL);
     }
 
-    pthread_create(&(threadPool->result_handling_thread), NULL, collect_result, NULL);
-
-    generate_task(argc, argv);
+//    pthread_create(&(threadPool->result_handling_thread), NULL, collect_result, NULL);
 }
