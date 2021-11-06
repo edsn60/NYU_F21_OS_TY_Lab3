@@ -18,7 +18,7 @@
 extern thread_pool* threadPool;
 
 
-void submit_task(char *task, int task_id, int isfinished){
+void submit_task(char *task, int task_id, size_t task_size, int isfinished){
     pthread_mutex_lock(threadPool->task_queue_lock);
     if (!threadPool->task_head->next){
         threadPool->task_tail = threadPool->task_head;
@@ -34,6 +34,7 @@ void submit_task(char *task, int task_id, int isfinished){
     threadPool->task_tail->next = NULL;
     threadPool->task_tail->task_id = task_id;
     threadPool->task_tail->task_string = task;
+    threadPool->task_tail->task_size = task_size;
     pthread_mutex_lock(threadPool->task_count_lock);
     threadPool->task_count++;
     pthread_mutex_unlock(threadPool->task_count_lock);
@@ -49,20 +50,17 @@ void submit_task(char *task, int task_id, int isfinished){
 }
 
 
-void generate_task(char **argv){
+void generate_task(int argc, char **argv){
     int task_id = 0;
     struct stat st;
     char *addr;
     off_t page_size = sysconf(_SC_PAGE_SIZE);
-    off_t remain_size = page_size;
 
-    char *task = (char *) malloc(sizeof(char) * (page_size + 1));
-
-    for (char **c = &argv[optind]; *c; c++) {
-
-        int fd = open(*c, O_RDONLY);
+    for (int i = 3; i < argc; i ++) {
+        char *filename = argv[i];
+        int fd = open(filename, O_RDONLY);
         if (fd == -1) {
-            fprintf(stderr, "Error: failed to open file '%s', ignored\n", *c);
+            fprintf(stderr, "Error: failed to open file '%s', ignored\n", filename);
             exit(-1);
         }
         if (fstat(fd, &st) < 0) {
@@ -72,53 +70,19 @@ void generate_task(char **argv){
         off_t file_size = st.st_size;
         addr = mmap(0, file_size, PROT_READ, MAP_SHARED, fd, 0);
         while (file_size >= page_size) {
-            if (!remain_size) {
-                task = (char *) malloc(sizeof(char) * (page_size + 1));
-                if (!task){
-                    fprintf(stderr, "Error: malloc failed in task_manager.c:74\n");
-                    exit(-1);
-                }
-                strncat(task, addr, page_size);
-                file_size -= page_size;
-                addr += page_size;
-            } else {
-                strncat(task, addr, remain_size);
-                file_size -= remain_size;
-                addr += remain_size;
-                remain_size = 0;
-            }
-            submit_task(task, task_id, 0);
+            submit_task(addr, task_id, page_size, 0);
+            addr += page_size;
+            file_size -= page_size;
             task_id++;
         }
         if (file_size < page_size) {
-            if (!remain_size) {
-                task = (char *) malloc(sizeof(char) * (page_size + 1));
-                if (!task){
-                    fprintf(stderr, "Error: malloc failed in task_manager.c:93\n");
-                    exit(-1);
-                }
-                strncat(task, addr, file_size);
-                remain_size = page_size - file_size;
-            } else {
-                if (remain_size > file_size) {
-                    strncat(task, addr, file_size);
-                    remain_size -= file_size;
-                } else {   // remain_size <= file_size
-                    strncat(task, addr, remain_size);
-                    submit_task(task, task_id, 0);
-                    task_id++;
-                    file_size -= remain_size;
-                    addr += remain_size;
-                    task = (char *) malloc(sizeof(char) * (page_size + 1));
-                    if (!task){
-                        fprintf(stderr, "Error: malloc failed in task_manager.c:110\n");
-                        exit(-1);
-                    }
-                    strncat(task, addr, file_size);
-                    remain_size = page_size - file_size;
-                }
+            if (i == argc - 1){
+                submit_task(addr, task_id, file_size, 1);
+            }
+            else{
+                submit_task(addr, task_id, file_size, 0);
+                task_id++;
             }
         }
     }
-    submit_task(task, task_id, 1);
 }

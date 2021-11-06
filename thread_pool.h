@@ -41,4 +41,4 @@ typedef struct ThreadPool{
 #endif //NYU_F21_OS_TY_LAB3_THREAD_POOL_H
 
 
-void init_thread_pool(long thread_count, char **argv);
+void init_thread_pool(long thread_count, int argc, char **argv);

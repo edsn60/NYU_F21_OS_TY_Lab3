@@ -37,7 +37,7 @@ void single_thread(char **argv){
             exit(-1);
         }
         addr = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-        result = encoding(addr);
+        result = encoding(addr, st.st_size);
         res_len = strlen((char*)result) - 2;
 
         if (reserved[0] == result[0]){
@@ -55,8 +55,7 @@ void single_thread(char **argv){
 
 
 void *thread_runner(){
-    char *task;
-    int task_id;
+
     while(1){
         sem_wait(threadPool->remain_task);
 
@@ -75,8 +74,6 @@ void *thread_runner(){
         pthread_mutex_unlock(threadPool->task_submission_finished_lock);
 
         unsigned char *result;
-        task_id = threadPool->task_head->next->task_id;
-        task = threadPool->task_head->next->task_string;
         task_queue *tmp = threadPool->task_head->next;
         threadPool->task_head->next = tmp->next;
 
@@ -85,12 +82,13 @@ void *thread_runner(){
         }
 
         pthread_mutex_unlock(threadPool->task_queue_lock);
-        result = encoding(task);
+        result = encoding(tmp->task_string, tmp->task_size);
+
+        sem_wait(threadPool->write_result[tmp->task_id % RESULT_BUFFER_SIZE]);
+        threadPool->result[tmp->task_id % RESULT_BUFFER_SIZE] = result;
+        sem_post(threadPool->read_result[tmp->task_id % RESULT_BUFFER_SIZE]);
         tmp->next = NULL;
         free(tmp);
-        sem_wait(threadPool->write_result[task_id % RESULT_BUFFER_SIZE]);
-        threadPool->result[task_id % RESULT_BUFFER_SIZE] = result;
-        sem_post(threadPool->read_result[task_id % RESULT_BUFFER_SIZE]);
     }
 }
 

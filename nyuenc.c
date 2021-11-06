@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     else{   // multi thread
         char *arg = optarg;
         long threads_count = strtol(arg, NULL, 10);
-        init_thread_pool(threads_count, argv);
+        init_thread_pool(threads_count, argc, argv);
 
         sem_wait(threadPool->all_task_finished);
         pthread_join(threadPool->result_handling_thread, NULL);
@@ -38,11 +38,11 @@ int main(int argc, char **argv) {
         }
         free(threadPool->worker_threads);
 
-        free(threadPool->task_tail);
-//        for(int i = 0; i < RESULT_BUFFER_SIZE; i++){
-//            free(threadPool->read_result[i]);
-//            free(threadPool->write_result[i]);
-//        }
+        free(threadPool->task_head);
+        for(int i = 0; i < RESULT_BUFFER_SIZE; i++){
+            free(threadPool->read_result[i]);
+            free(threadPool->write_result[i]);
+        }
         pthread_mutex_destroy(threadPool->task_count_lock);
         free(threadPool->task_count_lock);
         pthread_mutex_destroy(threadPool->thread_count_lock);

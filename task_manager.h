@@ -8,9 +8,10 @@
 typedef struct TaskQueue{
     char *task_string;
     int task_id;
+    size_t task_size;
     struct TaskQueue *next;
 }task_queue;
 
 #endif //NYU_F21_OS_TY_LAB3_TASK_MANAGER_H
 
-void generate_task(char **argv);
+void generate_task(int argc, char **argv);

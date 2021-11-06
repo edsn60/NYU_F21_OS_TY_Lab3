@@ -7,8 +7,7 @@
 #include <stdio.h>
 
 
-unsigned char *encoding(char *content){
-    size_t size = strlen(content);
+unsigned char *encoding(char *content, size_t size){
     unsigned char *result = (unsigned char*) malloc(sizeof(unsigned char) * (size * 2 + 1));
     if (!result){
         fprintf(stderr, "Error: malloc failed in encoder.c:12\n");
@@ -21,14 +20,14 @@ unsigned char *encoding(char *content){
     }
     char current_char = *content;
     int count = 0;
-    for (char *c = content; *c; c++){
-        if (*c == current_char){
+    for (int i = 0; i < size; i++){
+        if (content[i] == current_char){
             count++;
         }
         else{
             result[idx++] = toascii(current_char);
             result[idx++] = (char)count;
-            current_char = *c;
+            current_char = content[i];
             count = 1;
         }
     }

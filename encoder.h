@@ -7,4 +7,4 @@
 
 #endif //NYU_F21_OS_TY_LAB3_ENCODER_H
 
-unsigned char *encoding(char *content);
+unsigned char *encoding(char *content, size_t size);
