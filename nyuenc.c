@@ -34,14 +34,14 @@ int main(int argc, char **argv) {
         sem_wait(threadPool->all_task_finished);
         pthread_join(threadPool->result_handling_thread, NULL);
         for (long i = 0; i < threads_count; i++){
-            pthread_join(threadPool->worker_threads[i], NULL);
+            pthread_join(*((threadPool->worker_threads)+i), NULL);
         }
         free(threadPool->worker_threads);
 
         free(threadPool->task_head);
         for(int i = 0; i < RESULT_BUFFER_SIZE; i++){
-            free(threadPool->read_result[i]);
-            free(threadPool->write_result[i]);
+            free(*((threadPool->read_result) + i));
+            free(*((threadPool->write_result + i)));
         }
         pthread_mutex_destroy(threadPool->task_count_lock);
         free(threadPool->task_count_lock);

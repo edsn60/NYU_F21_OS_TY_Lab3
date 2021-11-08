@@ -69,20 +69,20 @@ void generate_task(int argc, char **argv){
         }
         off_t file_size = st.st_size;
         addr = mmap(0, file_size, PROT_READ, MAP_SHARED, fd, 0);
-        while (file_size >= page_size) {
+        while (file_size > page_size) {
             submit_task(addr, task_id, page_size, 0);
             addr += page_size;
             file_size -= page_size;
             task_id++;
         }
-        if (file_size < page_size) {
-            if (i == argc - 1){
-                submit_task(addr, task_id, file_size, 1);
-            }
-            else{
-                submit_task(addr, task_id, file_size, 0);
-                task_id++;
-            }
+//        if (file_size < page_size) {
+        if (i == argc - 1){
+            submit_task(addr, task_id, file_size, 1);
         }
+        else{
+            submit_task(addr, task_id, file_size, 0);
+            task_id++;
+        }
+//        }
     }
 }

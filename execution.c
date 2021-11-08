@@ -47,7 +47,7 @@ void single_thread(char **argv){
             printf("%s", reserved);
         }
         strncpy(reserved, result + res_len, 2);
-        result[res_len] = '\0';
+        *(result+res_len) = '\0';
         printf("%s", result);
     }
     printf("%s", reserved);
@@ -84,9 +84,12 @@ void *thread_runner(){
         pthread_mutex_unlock(threadPool->task_queue_lock);
         result = encoding(tmp->task_string, tmp->task_size);
 
-        sem_wait(threadPool->write_result[tmp->task_id % RESULT_BUFFER_SIZE]);
-        threadPool->result[tmp->task_id % RESULT_BUFFER_SIZE] = result;
-        sem_post(threadPool->read_result[tmp->task_id % RESULT_BUFFER_SIZE]);
+//        sem_wait(threadPool->write_result[tmp->task_id % RESULT_BUFFER_SIZE]);
+        sem_wait(*(threadPool->write_result + (tmp->task_id % RESULT_BUFFER_SIZE)));
+//        threadPool->result[tmp->task_id % RESULT_BUFFER_SIZE] = result;
+        *(threadPool->result + (tmp->task_id % RESULT_BUFFER_SIZE)) = result;
+//        sem_post(threadPool->read_result[tmp->task_id % RESULT_BUFFER_SIZE]);
+        sem_post(*(threadPool->read_result + (tmp->task_id % RESULT_BUFFER_SIZE)));
         tmp->next = NULL;
         free(tmp);
     }
@@ -114,9 +117,11 @@ void *collect_result(){
         else{
             pthread_mutex_unlock(threadPool->task_submission_finished_lock);
         }
-        sem_wait(threadPool->read_result[i % RESULT_BUFFER_SIZE]);
-        result = threadPool->result[i % RESULT_BUFFER_SIZE];
-        sem_post(threadPool->write_result[i % RESULT_BUFFER_SIZE]);
+//        sem_wait(threadPool->read_result[i % RESULT_BUFFER_SIZE]);
+        sem_wait(*(threadPool->read_result + (i % RESULT_BUFFER_SIZE)));
+        result = *(threadPool->result + (i % RESULT_BUFFER_SIZE));
+//        sem_post(threadPool->write_result[i % RESULT_BUFFER_SIZE]);
+        sem_post(*(threadPool->write_result + (i % RESULT_BUFFER_SIZE)));
         res_len = strlen((char*)result) - 2;
         if (reserved[0] == result[0]){
             result[1] += reserved[1];

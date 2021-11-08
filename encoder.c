@@ -13,7 +13,7 @@ unsigned char *encoding(char *content, size_t size){
         fprintf(stderr, "Error: malloc failed in encoder.c:12\n");
         exit(-1);
     }
-    int idx = 0;
+    unsigned char *idx = result;
     if (!content || strlen(content) == 0){
         result[0] = '\0';
         return result;
@@ -25,14 +25,18 @@ unsigned char *encoding(char *content, size_t size){
             count++;
         }
         else{
-            result[idx++] = toascii(current_char);
-            result[idx++] = (char)count;
+            *idx = toascii(current_char);
+            idx++;
+            *idx = (unsigned char)count;
+            idx++;
             current_char = content[i];
             count = 1;
         }
     }
-    result[idx++] = current_char;
-    result[idx++] = (char)count;
-    result[idx] = '\0';
+    *idx = toascii(current_char);
+    idx++;
+    *idx = (char)count;
+    idx++;
+    *idx = '\0';
     return result;
 }
