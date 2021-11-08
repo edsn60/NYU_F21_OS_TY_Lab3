@@ -39,10 +39,10 @@ int main(int argc, char **argv) {
         free(threadPool->worker_threads);
 
         free(threadPool->task_tail);
-//        for(int i = 0; i < RESULT_BUFFER_SIZE; i++){
-//            free(threadPool->read_result[i]);
-//            free(threadPool->write_result[i]);
-//        }
+        for(int i = 0; i < RESULT_BUFFER_SIZE; i++){
+            free(threadPool->read_result[i]);
+            free(threadPool->write_result[i]);
+        }
         pthread_mutex_destroy(threadPool->task_count_lock);
         free(threadPool->task_count_lock);
         pthread_mutex_destroy(threadPool->thread_count_lock);
