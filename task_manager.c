@@ -57,7 +57,7 @@ void generate_task(int argc, char **argv){
     off_t page_size = sysconf(_SC_PAGE_SIZE);
 
     for (int i = 3; i < argc; i ++) {
-        char *filename = argv[i];
+        char *filename = *(argv + i);
         int fd = open(filename, O_RDONLY);
         if (fd == -1) {
             fprintf(stderr, "Error: failed to open file '%s', ignored\n", filename);

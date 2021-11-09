@@ -20,7 +20,7 @@ unsigned char *encoding(char *content, size_t size){
     }
     char current_char = *content;
     int count = 0;
-    for (int i = 0; i < size; i++){
+    for (size_t i = 0; i < size; i++){
         if (content[i] == current_char){
             count++;
         }

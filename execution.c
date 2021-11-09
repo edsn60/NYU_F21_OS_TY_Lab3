@@ -46,7 +46,8 @@ void single_thread(char **argv){
         else{
             printf("%s", reserved);
         }
-        strncpy(reserved, result + res_len, 2);
+        reserved[0] = *(result + res_len);
+        reserved[1] = *(result + res_len + 1);
         *(result+res_len) = '\0';
         printf("%s", result);
     }
@@ -59,7 +60,6 @@ void *thread_runner(){
     while(1){
         sem_wait(threadPool->remain_task);
 
-
         pthread_mutex_lock(threadPool->task_queue_lock);
         pthread_mutex_lock(threadPool->task_submission_finished_lock);
         if (threadPool->task_submission_finished == 1){
@@ -70,8 +70,9 @@ void *thread_runner(){
                 pthread_mutex_unlock(threadPool->task_queue_lock);
                 pthread_exit(NULL);
             }
+        } else{
+            pthread_mutex_unlock(threadPool->task_submission_finished_lock);
         }
-        pthread_mutex_unlock(threadPool->task_submission_finished_lock);
 
         unsigned char *result;
         task_queue *tmp = threadPool->task_head->next;
@@ -84,11 +85,8 @@ void *thread_runner(){
         pthread_mutex_unlock(threadPool->task_queue_lock);
         result = encoding(tmp->task_string, tmp->task_size);
 
-//        sem_wait(threadPool->write_result[tmp->task_id % RESULT_BUFFER_SIZE]);
         sem_wait(*(threadPool->write_result + (tmp->task_id % RESULT_BUFFER_SIZE)));
-//        threadPool->result[tmp->task_id % RESULT_BUFFER_SIZE] = result;
         *(threadPool->result + (tmp->task_id % RESULT_BUFFER_SIZE)) = result;
-//        sem_post(threadPool->read_result[tmp->task_id % RESULT_BUFFER_SIZE]);
         sem_post(*(threadPool->read_result + (tmp->task_id % RESULT_BUFFER_SIZE)));
         tmp->next = NULL;
         free(tmp);
@@ -117,10 +115,8 @@ void *collect_result(){
         else{
             pthread_mutex_unlock(threadPool->task_submission_finished_lock);
         }
-//        sem_wait(threadPool->read_result[i % RESULT_BUFFER_SIZE]);
         sem_wait(*(threadPool->read_result + (i % RESULT_BUFFER_SIZE)));
         result = *(threadPool->result + (i % RESULT_BUFFER_SIZE));
-//        sem_post(threadPool->write_result[i % RESULT_BUFFER_SIZE]);
         sem_post(*(threadPool->write_result + (i % RESULT_BUFFER_SIZE)));
         res_len = strlen((char*)result) - 2;
         if (reserved[0] == result[0]){
@@ -129,8 +125,9 @@ void *collect_result(){
         else{
             printf("%s", reserved);
         }
-        strncpy(reserved, result + res_len, 2);
-        result[res_len] = '\0';
+        reserved[0] = *(result + res_len);
+        reserved[1] = *(result + res_len + 1);
+        *(result+res_len) = '\0';
         printf("%s", result);
         free(result);
     }
