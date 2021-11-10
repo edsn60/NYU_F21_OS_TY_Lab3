@@ -18,8 +18,15 @@
 extern thread_pool* threadPool;
 
 
-void submit_task(char *task, int task_id, size_t task_size, int isfinished){
-    pthread_mutex_lock(threadPool->task_queue_lock);
+/**To submit the task to task queue mutual exclusively
+ *
+ * @param task:: string needed to be compressed
+ * @param task_id:: id of the task
+ * @param task_size:: length of ```task```
+ * @param is_finished:: if it is the last task(1 yes, 0 no)
+ */
+void submit_task(char *task, int task_id, size_t task_size, int is_finished){
+    pthread_mutex_lock(threadPool->task_queue_lock);    // grab the task queue lock
     if (!threadPool->task_head->next){
         threadPool->task_tail = threadPool->task_head;
     }
@@ -35,32 +42,68 @@ void submit_task(char *task, int task_id, size_t task_size, int isfinished){
     threadPool->task_tail->task_id = task_id;
     threadPool->task_tail->task_string = task;
     threadPool->task_tail->task_size = task_size;
-    pthread_mutex_lock(threadPool->task_count_lock);
+    pthread_mutex_lock(threadPool->task_count_lock);    // grab the task count lock
     threadPool->task_count++;
-    pthread_mutex_unlock(threadPool->task_count_lock);
+    pthread_mutex_unlock(threadPool->task_count_lock);  // release the task count lock
 
-    if (isfinished){
+    if (is_finished){   // if last task
         pthread_mutex_lock(threadPool->task_submission_finished_lock);
         threadPool->task_submission_finished = 1;
         pthread_mutex_unlock(threadPool->task_submission_finished_lock);
     }
-
-    sem_post(threadPool->remain_task);
-    pthread_mutex_unlock(threadPool->task_queue_lock);
+    sem_post(threadPool->remain_task);      // notify worker threads new task is ready
+    pthread_mutex_unlock(threadPool->task_queue_lock);      //release the task queue lock
 }
 
 
-void generate_task(int argc, char **argv){
+/**To generate the task from the mapped address one by one
+ *
+ */
+void generate_task(){
     int task_id = 0;
-    struct stat st;
     char *addr;
-    off_t page_size = sysconf(_SC_PAGE_SIZE);
+    off_t page_size = sysconf(_SC_PAGE_SIZE);   // 4096
+    off_t file_size;
+    if (!threadPool->file_info){
+        fprintf(stderr, "No file info\n");
+    }
+    for (fileinfo **file_info = threadPool->file_info; *file_info; file_info++){
+        addr = (*file_info)->addr;
+        file_size = (*file_info)->size;
+        while (file_size > page_size) {
+            submit_task(addr, task_id, page_size, 0);
+            addr += page_size;
+            file_size -= page_size;
+            task_id++;
+        }
+        if (!*(file_info+1)){
+            submit_task(addr, task_id, file_size, 1);
+        }
+        else{
+            submit_task(addr, task_id, file_size, 0);
+            task_id++;
+        }
+    }
+}
 
-    for (int i = 3; i < argc; i ++) {
-        char *filename = *(argv + i);
-        int fd = open(filename, O_RDONLY);
-        if (fd == -1) {
-            fprintf(stderr, "Error: failed to open file '%s', ignored\n", filename);
+
+/**Map all the files one by one and construct a struct array to temporarily store the mapped information
+ *
+ * @param argc:: number of commandline arguments
+ * @param argv:: list of commandline arguments
+ * @return:: total size of all the files
+ */
+off_t map_files(int argc, char **argv){
+    off_t total_size = 0;
+    struct stat st;
+    fileinfo **file_info = (fileinfo**) malloc(sizeof(fileinfo*) * (argc - 2));
+    file_info[argc-3] = NULL;
+    fileinfo **file = file_info;
+    for (char** arg = &argv[optind]; *arg; arg++){
+        *file = (fileinfo*) malloc(sizeof(fileinfo));
+        int fd = open(*arg, O_RDONLY);
+        if (fd == -1){
+            fprintf(stderr, "Error: failed to open file '%s', ignored\n", *arg);
             exit(-1);
         }
         if (fstat(fd, &st) < 0) {
@@ -68,21 +111,11 @@ void generate_task(int argc, char **argv){
             exit(-1);
         }
         off_t file_size = st.st_size;
-        addr = mmap(0, file_size, PROT_READ, MAP_SHARED, fd, 0);
-        while (file_size > page_size) {
-            submit_task(addr, task_id, page_size, 0);
-            addr += page_size;
-            file_size -= page_size;
-            task_id++;
-        }
-//        if (file_size < page_size) {
-        if (i == argc - 1){
-            submit_task(addr, task_id, file_size, 1);
-        }
-        else{
-            submit_task(addr, task_id, file_size, 0);
-            task_id++;
-        }
-//        }
+        total_size += file_size;
+        (*file)->size = file_size;
+        (*file)->addr = mmap(0, file_size, PROT_READ, MAP_SHARED, fd, 0);
+        file++;
     }
+    threadPool->file_info = file_info;
+    return total_size;
 }

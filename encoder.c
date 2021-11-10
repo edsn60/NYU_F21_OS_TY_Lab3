@@ -7,6 +7,12 @@
 #include <stdio.h>
 
 
+/**Encoding the input string
+ *
+ * @param content:: input string needed to be encoded
+ * @param size:: size of input string
+ * @return:: encoded string (unsigned char*)
+ */
 unsigned char *encoding(char *content, size_t size){
     unsigned char *result = (unsigned char*) malloc(sizeof(unsigned char) * (size * 2 + 1));
     if (!result){

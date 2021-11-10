@@ -15,11 +15,14 @@
 #include "execution.h"
 #include "encoder.h"
 #include "task_manager.h"
-#include "nyuenc.h"
 
 extern thread_pool* threadPool;
 
 
+/**Function used for single thread to encode
+ *
+ * @param argv: list of commandline arguments
+ */
 void single_thread(char **argv){
     char *filename;
     struct stat st;
@@ -55,20 +58,23 @@ void single_thread(char **argv){
 }
 
 
-void *thread_runner(){
+/**Worker threads controller
+ *
+ */
+void *thread_controller(){
 
     while(1){
-        sem_wait(threadPool->remain_task);
+        sem_wait(threadPool->remain_task);      // if there are tasks to do, otherwise, block and wait for tasks
 
         pthread_mutex_lock(threadPool->task_queue_lock);
         pthread_mutex_lock(threadPool->task_submission_finished_lock);
-        if (threadPool->task_submission_finished == 1){
+        if (threadPool->task_submission_finished == 1){    // if no more tasks
             pthread_mutex_unlock(threadPool->task_submission_finished_lock);
-            if (!(threadPool->task_head->next)){
+            if (!(threadPool->task_head->next)){    // if empty task queue
                 threadPool->task_tail = threadPool->task_head;
                 sem_post(threadPool->remain_task);
                 pthread_mutex_unlock(threadPool->task_queue_lock);
-                pthread_exit(NULL);
+                pthread_exit(NULL);     // exit
             }
         } else{
             pthread_mutex_unlock(threadPool->task_submission_finished_lock);
@@ -81,43 +87,43 @@ void *thread_runner(){
         if (!threadPool->task_head->next){
             threadPool->task_tail = threadPool->task_head;
         }
-
         pthread_mutex_unlock(threadPool->task_queue_lock);
         result = encoding(tmp->task_string, tmp->task_size);
 
-        sem_wait(*(threadPool->write_result + (tmp->task_id % RESULT_BUFFER_SIZE)));
-        *(threadPool->result + (tmp->task_id % RESULT_BUFFER_SIZE)) = result;
-        sem_post(*(threadPool->read_result + (tmp->task_id % RESULT_BUFFER_SIZE)));
+        *(threadPool->result + tmp->task_id) = result;
+        sem_post(threadPool->result_sem + tmp->task_id);
         tmp->next = NULL;
         free(tmp);
     }
 }
 
 
+/**Collect the result
+ *
+ */
 void *collect_result(){
     unsigned char reserved[3] = {'\0'};
     unsigned char *result;
     size_t res_len;
     for (long i = 0; ; i++){
         pthread_mutex_lock(threadPool->task_submission_finished_lock);
-        if (threadPool->task_submission_finished == 1) {
+        if (threadPool->task_submission_finished == 1) {    // if no more tasks
             pthread_mutex_unlock(threadPool->task_submission_finished_lock);
             pthread_mutex_lock(threadPool->task_count_lock);
-            if (i == threadPool->task_count) {
+            if (i == threadPool->task_count) {      // if read all results
                 pthread_mutex_unlock(threadPool->task_count_lock);
                 sem_post(threadPool->all_task_finished);
                 sem_post(threadPool->remain_task);
                 printf("%s", reserved);
-                pthread_exit(NULL);
+                pthread_exit(NULL);     // exit
             }
             pthread_mutex_unlock(threadPool->task_count_lock);
         }
         else{
             pthread_mutex_unlock(threadPool->task_submission_finished_lock);
         }
-        sem_wait(*(threadPool->read_result + (i % RESULT_BUFFER_SIZE)));
-        result = *(threadPool->result + (i % RESULT_BUFFER_SIZE));
-        sem_post(*(threadPool->write_result + (i % RESULT_BUFFER_SIZE)));
+        sem_wait(threadPool->result_sem + i);
+        result = *(threadPool->result + i);
         res_len = strlen((char*)result) - 2;
         if (reserved[0] == result[0]){
             result[1] += reserved[1];
