@@ -35,7 +35,7 @@ typedef struct ThreadPool{
 
     fileinfo **file_info;     // temporarily store the info of mapped files
 
-}thread_pool;
+}thread_pool_t;
 
 #endif //NYU_F21_OS_TY_LAB3_THREAD_POOL_H
 

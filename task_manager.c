@@ -15,7 +15,7 @@
 #include "thread_pool.h"
 
 
-extern thread_pool* threadPool;
+extern thread_pool_t* thread_pool;
 
 
 /**To submit the task to task queue mutual exclusively
@@ -26,33 +26,33 @@ extern thread_pool* threadPool;
  * @param is_finished:: if it is the last task(1 yes, 0 no)
  */
 void submit_task(char *task, int task_id, size_t task_size, int is_finished){
-    pthread_mutex_lock(threadPool->task_queue_lock);    // grab the task queue lock
-    if (!threadPool->task_head->next){
-        threadPool->task_tail = threadPool->task_head;
+    pthread_mutex_lock(thread_pool->task_queue_lock);    // grab the task queue lock
+    if (!thread_pool->task_head->next){
+        thread_pool->task_tail = thread_pool->task_head;
     }
 
-    threadPool->task_tail->next = (task_queue*) malloc(sizeof(task_queue));
-    if (!(threadPool->task_tail->next)){
+    thread_pool->task_tail->next = (task_queue*) malloc(sizeof(task_queue));
+    if (!(thread_pool->task_tail->next)){
         fprintf(stderr, "Error: malloc failed in task_manager.c:28\n");
         exit(-1);
     }
 
-    threadPool->task_tail = threadPool->task_tail->next;
-    threadPool->task_tail->next = NULL;
-    threadPool->task_tail->task_id = task_id;
-    threadPool->task_tail->task_string = task;
-    threadPool->task_tail->task_size = task_size;
-    pthread_mutex_lock(threadPool->task_count_lock);    // grab the task count lock
-    threadPool->task_count++;
-    pthread_mutex_unlock(threadPool->task_count_lock);  // release the task count lock
+    thread_pool->task_tail = thread_pool->task_tail->next;
+    thread_pool->task_tail->next = NULL;
+    thread_pool->task_tail->task_id = task_id;
+    thread_pool->task_tail->task_string = task;
+    thread_pool->task_tail->task_size = task_size;
+    pthread_mutex_lock(thread_pool->task_count_lock);    // grab the task count lock
+    thread_pool->task_count++;
+    pthread_mutex_unlock(thread_pool->task_count_lock);  // release the task count lock
 
     if (is_finished){   // if last task
-        pthread_mutex_lock(threadPool->task_submission_finished_lock);
-        threadPool->task_submission_finished = 1;
-        pthread_mutex_unlock(threadPool->task_submission_finished_lock);
+        pthread_mutex_lock(thread_pool->task_submission_finished_lock);
+        thread_pool->task_submission_finished = 1;
+        pthread_mutex_unlock(thread_pool->task_submission_finished_lock);
     }
-    sem_post(threadPool->remain_task);      // notify worker threads new task is ready
-    pthread_mutex_unlock(threadPool->task_queue_lock);      //release the task queue lock
+    sem_post(thread_pool->remain_task);      // notify worker threads new task is ready
+    pthread_mutex_unlock(thread_pool->task_queue_lock);      //release the task queue lock
 }
 
 
@@ -64,10 +64,10 @@ void generate_task(){
     char *addr;
     off_t page_size = sysconf(_SC_PAGE_SIZE);   // 4096
     off_t file_size;
-    if (!threadPool->file_info){
+    if (!thread_pool->file_info){
         fprintf(stderr, "No file info\n");
     }
-    for (fileinfo **file_info = threadPool->file_info; *file_info; file_info++){
+    for (fileinfo **file_info = thread_pool->file_info; *file_info; file_info++){
         addr = (*file_info)->addr;
         file_size = (*file_info)->size;
         while (file_size > page_size) {
@@ -116,6 +116,6 @@ off_t map_files(int argc, char **argv){
         (*file)->addr = mmap(0, file_size, PROT_READ, MAP_SHARED, fd, 0);
         file++;
     }
-    threadPool->file_info = file_info;
+    thread_pool->file_info = file_info;
     return total_size;
 }

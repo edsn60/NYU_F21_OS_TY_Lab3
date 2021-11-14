@@ -9,7 +9,7 @@
 #include "execution.h"
 
 
-thread_pool *threadPool = NULL;
+thread_pool_t *thread_pool = NULL;
 
 
 int main(int argc, char **argv) {
@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
         long threads_count = strtol(arg, NULL, 10);
         init_thread_pool(threads_count, argc, argv);
 
-        sem_wait(threadPool->all_task_finished);    // wait for all tasks to be finished
+        sem_wait(thread_pool->all_task_finished);    // wait for all tasks to be finished
 
         // destroy the thread pool
         destroy_thread_pool(threads_count);
